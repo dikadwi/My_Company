@@ -452,17 +452,32 @@ document.head.appendChild(style);
 
 function animateCounter(element, target, duration = 2500) {
     let current = 0;
-    const increment = target / (duration / 16);
+    const originalText = element.textContent;
+    const isPercentage = originalText.includes('%');
+    const suffix = isPercentage ? '%' : '+';
     
-    const timer = setInterval(() => {
-        current += increment;
-        if (current >= target) {
-            element.textContent = target + '+';
-            clearInterval(timer);
-            return;
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // easeOutQuad easing function for smooth deceleration
+        const easeProgress = 1 - (1 - progress) * (1 - progress);
+        current = Math.floor(target * easeProgress);
+        
+        element.textContent = current + suffix;
+        
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        } else {
+            element.textContent = target + suffix;
         }
-        element.textContent = Math.floor(current) + '+';
-    }, 16);
+    }
+    
+    // Start animation from 0
+    element.textContent = '0' + suffix;
+    requestAnimationFrame(update);
 }
 
 // Observe highlight numbers with separate observer
@@ -472,7 +487,7 @@ const statsObserver = new IntersectionObserver((entries) => {
             entry.target.setAttribute('data-counter-animated', 'true');
             const text = entry.target.textContent.replace(/\D/g, '');
             const target = parseInt(text);
-            if (!isNaN(target)) {
+            if (!isNaN(target) && target > 0) {
                 animateCounter(entry.target, target, 2500);
             }
         }
